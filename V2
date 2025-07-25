@@ -1,0 +1,221 @@
+-- Criar GUI principal
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "PudimHubGUI"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = game.CoreGui
+
+-- Salvar posição e estado
+getgenv().PudimESP = getgenv().PudimESP or {
+    enabled = false,
+    guiPos = UDim2.new(0, 20, 0, 100),
+}
+
+-- Janela
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 200, 0, 120)
+frame.Position = getgenv().PudimESP.guiPos
+frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true
+frame.Parent = screenGui
+
+-- Minimizar botão
+local minimize = Instance.new("TextButton")
+minimize.Size = UDim2.new(0, 30, 0, 30)
+minimize.Position = UDim2.new(1, -30, 0, 0)
+minimize.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
+minimize.Text = "-"
+minimize.TextColor3 = Color3.new(1,1,1)
+minimize.Font = Enum.Font.GothamBold
+minimize.TextSize = 20
+minimize.Parent = frame
+
+local contentVisible = true
+local function toggleMinimize()
+    contentVisible = not contentVisible
+    for _, v in ipairs(frame:GetChildren()) do
+        if v:IsA("TextButton") and v ~= minimize then
+            v.Visible = contentVisible
+        end
+    end
+end
+minimize.MouseButton1Click:Connect(toggleMinimize)
+
+-- Título
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 30)
+title.Position = UDim2.new(0, 0, 0, 0)
+title.BackgroundColor3 = Color3.fromRGB(255, 170, 0)
+title.Text = "🍮 Pudim Hub"
+title.TextColor3 = Color3.new(1, 1, 1)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 18
+title.Parent = frame
+
+-- Botão ESP
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(0.8, 0, 0, 40)
+button.Position = UDim2.new(0.1, 0, 0, 50)
+button.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+button.TextColor3 = Color3.new(1, 1, 1)
+button.Text = "Ativar ESP"
+button.Font = Enum.Font.SourceSansBold
+button.TextSize = 18
+button.Parent = frame
+
+-- Botão Pulo 2x
+local jumpButton = Instance.new("TextButton")
+jumpButton.Size = UDim2.new(0.8, 0, 0, 40)
+jumpButton.Position = UDim2.new(0.1, 0, 0, 95)
+jumpButton.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+jumpButton.TextColor3 = Color3.new(1, 1, 1)
+jumpButton.Text = "Pulo 2x"
+jumpButton.Font = Enum.Font.SourceSansBold
+jumpButton.TextSize = 18
+jumpButton.Parent = frame
+
+-- Variável para rastrear estado do pulo
+getgenv().PudimESP.doubleJump = getgenv().PudimESP.doubleJump or false
+local originalJumpPower = nil
+
+-- Alternar Pulo 2x
+local function toggleDoubleJump()
+    local humanoid = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    if not humanoid then return end
+
+    if not getgenv().PudimESP.doubleJump then
+        originalJumpPower = humanoid.JumpPower
+        humanoid.UseJumpPower = true
+        humanoid.JumpPower = originalJumpPower * 2
+        jumpButton.Text = "Pulo normal"
+    else
+        humanoid.JumpPower = originalJumpPower or 50
+        jumpButton.Text = "Pulo 2x"
+    end
+
+    getgenv().PudimESP.doubleJump = not getgenv().PudimESP.doubleJump
+end
+
+jumpButton.MouseButton1Click:Connect(toggleDoubleJump)
+
+
+
+
+-- Variáveis
+local espEnabled = getgenv().PudimESP.enabled
+local boxTable = {}
+local nameTable = {}
+
+-- Criar ESP
+local function createESP(character, player)
+    local root = character:FindFirstChild("HumanoidRootPart")
+    local head = character:FindFirstChild("Head")
+    if not root or not head then return end
+    if boxTable[character] or nameTable[character] then return end
+
+    local box = Instance.new("BoxHandleAdornment")
+    box.Name = "BoxESP"
+    box.Adornee = root
+    box.Size = Vector3.new(2, 3, 1)
+    box.Color3 = Color3.fromRGB(255, 0, 0)
+    box.Transparency = 0.6
+    box.AlwaysOnTop = true
+    box.ZIndex = 10
+    box.Parent = root
+    boxTable[character] = box
+
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "NameESP"
+    billboard.Size = UDim2.new(0, 100, 0, 30)
+    billboard.Adornee = head
+    billboard.AlwaysOnTop = true
+    billboard.StudsOffset = Vector3.new(0, 1.5, 0)
+    billboard.Parent = head
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.Text = player.Name
+    label.TextColor3 = Color3.new(1, 1, 1)
+    label.TextStrokeTransparency = 0.3
+    label.TextScaled = true
+    label.Font = Enum.Font.SourceSansBold
+    label.Parent = billboard
+
+    nameTable[character] = billboard
+end
+
+-- Remover ESP
+local function removeESP(character)
+    if boxTable[character] then
+        boxTable[character]:Destroy()
+        boxTable[character] = nil
+    end
+    if nameTable[character] then
+        nameTable[character]:Destroy()
+        nameTable[character] = nil
+    end
+end
+
+-- Atualizar ESP em todos
+local function updateESP()
+    for _, player in pairs(game.Players:GetPlayers()) do
+        if player ~= game.Players.LocalPlayer and player.Character then
+            if espEnabled then
+                createESP(player.Character, player)
+            else
+                removeESP(player.Character)
+            end
+        end
+    end
+end
+
+-- Alternar ESP
+local function toggleESP()
+    espEnabled = not espEnabled
+    button.Text = espEnabled and "Desativar ESP" or "Ativar ESP"
+    getgenv().PudimESP.enabled = espEnabled
+    updateESP()
+end
+button.Text = espEnabled and "Desativar ESP" or "Ativar ESP"
+button.MouseButton1Click:Connect(toggleESP)
+
+-- Novos personagens
+local function onCharacterAdded(char, player)
+    task.wait(1)
+    if espEnabled then
+        createESP(char, player)
+    end
+end
+
+-- Jogadores atuais
+for _, player in pairs(game.Players:GetPlayers()) do
+    if player ~= game.Players.LocalPlayer then
+        player.CharacterAdded:Connect(function(char)
+            onCharacterAdded(char, player)
+        end)
+        if player.Character then
+            onCharacterAdded(player.Character, player)
+        end
+    end
+end
+
+-- Jogadores que entrarem
+game.Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function(char)
+        onCharacterAdded(char, player)
+    end)
+end)
+
+-- Jogadores que saírem
+game.Players.PlayerRemoving:Connect(function(player)
+    if player.Character then
+        removeESP(player.Character)
+    end
+end)
+
+-- Salvar posição da GUI ao mover
+frame:GetPropertyChangedSignal("Position"):Connect(function()
+    getgenv().PudimESP.guiPos = frame.Position
+end)
